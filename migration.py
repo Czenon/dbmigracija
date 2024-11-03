@@ -55,7 +55,10 @@ for filename in migrations_file_list:
 # Sort migration files in correct date order
 migrations_list.sort(reverse=False)
 
+# Counter for how many migration actions we do
 counter = 0
+
+make_migrations_table()
 
 for migration in migrations_list:
     with open(cur_dir + "/migrations/" + migration, 'r') as file:
