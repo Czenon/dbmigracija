@@ -37,7 +37,7 @@ def exec_sql(query):
         pass
     return status
 
-# Create migrations table
+# Create migrations table if it does not exist yet
 def make_migrations_table():
     result = cur.execute('''
     CREATE TABLE IF NOT EXISTS public.migrations
