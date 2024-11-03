@@ -13,7 +13,11 @@ exec_td = datetime.fromtimestamp(exec_ts).strftime('%Y-%m-%d %H:%M:%S')
 # Get working directory and create logger
 cur_dir = os.getcwd()
 logger = logging.getLogger()
-logging.basicConfig(filename='connect.log', level=logging.INFO)
+
+# Make log folder if it does not exist already
+if not os.path.exists(cur_dir + '/logs'): 
+    os.makedirs('logs')
+logging.basicConfig(filename='logs/connect.log', level=logging.INFO)
 logger.info("Started at " + exec_td)
 
 # Retrieve login data from config
