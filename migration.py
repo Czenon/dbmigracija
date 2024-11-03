@@ -4,7 +4,6 @@ import os
 import time
 
 from configparser import ConfigParser
-from connect import connect
 
 # Get config values
 config = ConfigParser()
@@ -16,16 +15,32 @@ dbport = config.get('postgres_config', 'port')
 dbusername = config.get('postgres_config', 'username')
 dbuserpass = config.get('postgres_config', 'password')
 
+# Connect to Postgres DB and return a connection object
+def connect(name, address, port, username, userpass):
+    with psycopg2.connect(f"dbname={name} user={username} password={userpass} host={address} port={port}") as conn:
+        return conn
+
 # Connect to DB using the method in connect.py and return connection object
 conn = connect(dbname, dbaddress, dbport, dbusername, dbuserpass)
 
 # Make a DB cursor
 cur = conn.cursor()
 
-# Create migrations table
+# Execute SQL queries
+def exec_sql(query):
+    status = 0
+    try:
+        cur.execute(query)
+        conn.commit()
+    except:
+        status = 1
+        pass
+    return status
+
+# Create migrations table if it does not exist yet
 def make_migrations_table():
     result = cur.execute('''
-    CREATE TABLE public.migrations
+    CREATE TABLE IF NOT EXISTS public.migrations
     (
     id serial NOT NULL,
     name character varying(255),
@@ -43,6 +58,7 @@ def make_migrations_table():
 # Populate migrations table
 def migration_value_insert(name, exec_ts, exec_td):
     cur.execute(f"INSERT INTO public.migrations (name, exec_ts, exec_td) VALUES ('{str(name)}', '{str(exec_ts)}', '{str(exec_td)}');")
+    conn.commit()
 
 # Get all migration files
 migrations_list = []
@@ -55,15 +71,22 @@ for filename in migrations_file_list:
 # Sort migration files in correct date order
 migrations_list.sort(reverse=False)
 
+# Counter for how many migration actions we do
 counter = 0
+
+make_migrations_table()
 
 for migration in migrations_list:
     with open(cur_dir + "/migrations/" + migration, 'r') as file:
         migration_sql = file.read()
-        mig_exec_ts = int(time.time())
-        mig_exec_td = datetime.datetime.utcfromtimestamp(mig_exec_ts).strftime('%Y-%m-%d %H:%M:%S')
-        migration_value_insert(migration, mig_exec_ts, mig_exec_td)
-        counter += 1
+        if exec_sql(migration_sql) == 0:
+            mig_exec_ts = int(time.time())
+            mig_exec_td = datetime.datetime.fromtimestamp(mig_exec_ts).strftime('%Y-%m-%d %H:%M:%S')
+            migration_value_insert(migration, mig_exec_ts, mig_exec_td)
+            counter += 1
+        else:
+            print("Problem executing migration. Aborting.")
+            break
 
 if counter == 0:
     print("No migrations to execute.")
