@@ -58,6 +58,7 @@ def make_migrations_table():
 # Populate migrations table
 def migration_value_insert(name, exec_ts, exec_td):
     cur.execute(f"INSERT INTO public.migrations (name, exec_ts, exec_td) VALUES ('{str(name)}', '{str(exec_ts)}', '{str(exec_td)}');")
+    conn.commit()
 
 # Get all migration files
 migrations_list = []
@@ -80,7 +81,7 @@ for migration in migrations_list:
         migration_sql = file.read()
         if exec_sql(migration_sql) == 0:
             mig_exec_ts = int(time.time())
-            mig_exec_td = datetime.datetime.utcfromtimestamp(mig_exec_ts).strftime('%Y-%m-%d %H:%M:%S')
+            mig_exec_td = datetime.datetime.fromtimestamp(mig_exec_ts).strftime('%Y-%m-%d %H:%M:%S')
             migration_value_insert(migration, mig_exec_ts, mig_exec_td)
             counter += 1
         else:
