@@ -4,30 +4,43 @@ import os
 import time
 
 from configparser import ConfigParser
-from connect import connect
 
 # Get config values
 config = ConfigParser()
 config.read('config.ini')
 
-print("confs")
 dbname = config.get('postgres_config', 'database')
 dbaddress = config.get('postgres_config', 'address')
 dbport = config.get('postgres_config', 'port')
 dbusername = config.get('postgres_config', 'username')
 dbuserpass = config.get('postgres_config', 'password')
 
+# Connect to Postgres DB and return a connection object
+def connect(name, address, port, username, userpass):
+    with psycopg2.connect(f"dbname={name} user={username} password={userpass} host={address} port={port}") as conn:
+        return conn
+
 # Connect to DB using the method in connect.py and return connection object
-print("guh")
 conn = connect(dbname, dbaddress, dbport, dbusername, dbuserpass)
-print("guh2")
+
 # Make a DB cursor
 cur = conn.cursor()
+
+# Execute SQL queries
+def exec_sql(query):
+    status = 0
+    try:
+        cur.execute(query)
+        conn.commit()
+    except:
+        status = 1
+        pass
+    return status
 
 # Create migrations table
 def make_migrations_table():
     result = cur.execute('''
-    CREATE TABLE public.migrations
+    CREATE TABLE IF NOT EXISTS public.migrations
     (
     id serial NOT NULL,
     name character varying(255),
@@ -65,10 +78,14 @@ make_migrations_table()
 for migration in migrations_list:
     with open(cur_dir + "/migrations/" + migration, 'r') as file:
         migration_sql = file.read()
-        mig_exec_ts = int(time.time())
-        mig_exec_td = datetime.datetime.utcfromtimestamp(mig_exec_ts).strftime('%Y-%m-%d %H:%M:%S')
-        migration_value_insert(migration, mig_exec_ts, mig_exec_td)
-        counter += 1
+        if exec_sql(migration_sql) == 0:
+            mig_exec_ts = int(time.time())
+            mig_exec_td = datetime.datetime.utcfromtimestamp(mig_exec_ts).strftime('%Y-%m-%d %H:%M:%S')
+            migration_value_insert(migration, mig_exec_ts, mig_exec_td)
+            counter += 1
+        else:
+            print("Problem executing migration. Aborting.")
+            break
 
 if counter == 0:
     print("No migrations to execute.")
