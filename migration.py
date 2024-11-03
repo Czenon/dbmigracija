@@ -1,17 +1,29 @@
 import psycopg2
-import datetime
+import logging
 import os
 import time
 
+from datetime import datetime
 from configparser import ConfigParser
 
+# Get program execution time to use in logger file
+exec_ts = int(time.time())
+exec_td = datetime.fromtimestamp(exec_ts).strftime('%Y-%m-%d %H:%M:%S')
+
+# Get working directory and create logger
+cur_dir = os.getcwd()
+logger = logging.getLogger()
+logging.basicConfig(filename='migration.log', level=logging.INFO)
+logger.info("Started at " + exec_td)
+
 # Get config values
+logger.info("Reading config.ini file...")
 config = ConfigParser()
 config.read('config.ini')
 
-dbname = config.get('postgres_config', 'database')
-dbaddress = config.get('postgres_config', 'address')
-dbport = config.get('postgres_config', 'port')
+dbname     = config.get('postgres_config', 'database')
+dbaddress  = config.get('postgres_config', 'address')
+dbport     = config.get('postgres_config', 'port')
 dbusername = config.get('postgres_config', 'username')
 dbuserpass = config.get('postgres_config', 'password')
 
@@ -21,6 +33,7 @@ def connect(name, address, port, username, userpass):
         return conn
 
 # Connect to DB using the method in connect.py and return connection object
+logger.info("Connecting to DB...")
 conn = connect(dbname, dbaddress, dbport, dbusername, dbuserpass)
 
 # Make a DB cursor
@@ -61,32 +74,40 @@ def migration_value_insert(name, exec_ts, exec_td):
     conn.commit()
 
 # Get all migration files
+logger.info("Checking for migration files...")
 migrations_list = []
-cur_dir = os.getcwd()
 migrations_file_list = os.listdir(cur_dir + "/migrations/")
 for filename in migrations_file_list:
     if filename.endswith('.sql'):
         migrations_list.append(filename)
 
 # Sort migration files in correct date order
+logger.info("Sorting migration files by date...")
 migrations_list.sort(reverse=False)
 
 # Counter for how many migration actions we do
 counter = 0
 
+logger.info("Creating migrations table...")
 make_migrations_table()
 
+logger.info("Processing migration files...")
 for migration in migrations_list:
     with open(cur_dir + "/migrations/" + migration, 'r') as file:
         migration_sql = file.read()
+        logger.info("Attempting to execute migration SQL code...")
         if exec_sql(migration_sql) == 0:
+            logger.info("Writing migration execution success data to database...")
             mig_exec_ts = int(time.time())
-            mig_exec_td = datetime.datetime.fromtimestamp(mig_exec_ts).strftime('%Y-%m-%d %H:%M:%S')
+            mig_exec_td = datetime.fromtimestamp(mig_exec_ts).strftime('%Y-%m-%d %H:%M:%S')
             migration_value_insert(migration, mig_exec_ts, mig_exec_td)
             counter += 1
         else:
-            print("Problem executing migration. Aborting.")
+            logger.info("Migration file " + migration + " failed! Aborting.")
             break
 
 if counter == 0:
-    print("No migrations to execute.")
+    logger.info("No migrations to execute.")
+
+conn.close()
+logger.info("Done.")
