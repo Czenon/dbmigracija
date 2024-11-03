@@ -10,6 +10,7 @@ from connect import connect
 config = ConfigParser()
 config.read('config.ini')
 
+print("confs")
 dbname = config.get('postgres_config', 'database')
 dbaddress = config.get('postgres_config', 'address')
 dbport = config.get('postgres_config', 'port')
@@ -17,8 +18,9 @@ dbusername = config.get('postgres_config', 'username')
 dbuserpass = config.get('postgres_config', 'password')
 
 # Connect to DB using the method in connect.py and return connection object
+print("guh")
 conn = connect(dbname, dbaddress, dbport, dbusername, dbuserpass)
-
+print("guh2")
 # Make a DB cursor
 cur = conn.cursor()
 
