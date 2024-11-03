@@ -1,9 +1,9 @@
 import psycopg2
-import datetime
 import logging
 import os
 import time
 
+from datetime import datetime
 from configparser import ConfigParser
 
 # Get program execution time to use in logger file
@@ -99,7 +99,7 @@ for migration in migrations_list:
         if exec_sql(migration_sql) == 0:
             logger.info("Writing migration execution success data to database...")
             mig_exec_ts = int(time.time())
-            mig_exec_td = datetime.datetime.fromtimestamp(mig_exec_ts).strftime('%Y-%m-%d %H:%M:%S')
+            mig_exec_td = datetime.fromtimestamp(mig_exec_ts).strftime('%Y-%m-%d %H:%M:%S')
             migration_value_insert(migration, mig_exec_ts, mig_exec_td)
             counter += 1
         else:

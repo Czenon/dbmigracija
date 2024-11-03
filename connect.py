@@ -43,6 +43,7 @@ cur = conn.cursor()
 # Select name and age for all cats in DB, then each row into a tuple
 logger.info("Querying cat name and age...")
 cur.execute("SELECT name, age FROM cats")
+print(cur.rowcount())
 data = cur.fetchall()
 
 # Print out data if our rows actually contain something
